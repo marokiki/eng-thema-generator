@@ -1,5 +1,6 @@
 .cache/
 .codex
 .env
+bin/
 web/node_modules/
 web/dist/

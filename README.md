@@ -1,29 +1,66 @@
 # Speak Small
 
-Five-minute English free-talk prompts with a Go API, Gemini-powered topic generation, a TypeScript frontend, and nginx served through Docker.
+Five-minute English free-talk prompts with a Go API and a TypeScript frontend.
 
-## Run
+## Requirements
 
-Create a `.env` file with your Gemini settings and start the stack:
+- Go 1.19+
+- Node.js 18+
+- npm
+- An existing web server for static hosting and reverse proxying `/api`
+
+## Environment
+
+Create a `.env` file in the project root.
 
 ```bash
-docker compose up --build
+cp .env.example .env
 ```
 
-The included `.env` format is:
+Set these values:
 
 ```bash
 GEMINI_API_KEY=your_key_here
 GEMINI_MODEL=gemini-2.5-flash-lite
 ```
 
-Then open `http://localhost:8080`.
+## Build
 
-## Stack
+Build the API binary:
 
-- `api/`: Go API that generates prompts with Gemini and falls back to local prompts if needed
-- `web/`: TypeScript frontend compiled to static files
-- `nginx/`: reverse proxy and static hosting config
+```bash
+mkdir -p bin
+(cd api && go build -o ../bin/theme-server ./cmd/server)
+```
+
+Build the frontend:
+
+```bash
+cd web
+npm ci
+npm run build
+```
+
+The static files will be generated in `web/dist/`.
+
+## Run
+
+Start the API with the project `.env` loaded:
+
+```bash
+set -a
+. ./.env
+set +a
+ADDR=127.0.0.1:18080 ./bin/theme-server
+```
+
+Run that command from the project root.
+
+Then serve `web/dist/` as static files and reverse proxy `/api/` to `127.0.0.1:18080`.
+
+## systemd
+
+An example unit file is included at `systemd/speak-api.service`.
 
 ## Endpoints
 
