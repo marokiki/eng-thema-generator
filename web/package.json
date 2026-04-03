@@ -1,0 +1,11 @@
+{
+  "name": "eng-theme-generator-web",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "build": "rm -rf dist && mkdir -p dist/assets && tsc && cp -R public/. dist/. && cp src/styles.css dist/assets/styles.css"
+  },
+  "devDependencies": {
+    "typescript": "^5.8.3"
+  }
+}

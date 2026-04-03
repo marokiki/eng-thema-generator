@@ -1,0 +1,5 @@
+.cache/
+.codex
+.env
+web/node_modules/
+web/dist/

@@ -1,0 +1,107 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Speak Small</title>
+    <meta
+      name="description"
+      content="Five-minute English speaking themes that are easy to start and hard to overthink."
+    />
+    <link rel="stylesheet" href="/assets/styles.css" />
+    <script type="module" src="/assets/main.js"></script>
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">Five-minute English warmups</p>
+          <h1>Talk first. Think later.</h1>
+          <p class="lede">
+            Pick a mood, get a natural speaking theme, and keep the conversation
+            moving with follow-up angles that feel light instead of academic.
+          </p>
+        </div>
+        <div class="hero-card">
+          <p class="hero-card-title">Suggested flow</p>
+          <ol class="timeline">
+            <li><span>1 min</span> Answer the warm-up question.</li>
+            <li><span>3 min</span> Explore the follow-up prompts.</li>
+            <li><span>1 min</span> Wrap up with a final opinion.</li>
+          </ol>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="control-panel">
+          <div class="panel-intro">
+            <h2>Generate your next prompt</h2>
+            <p>Use the filters when you want a certain vibe. Leave them open when you just want something usable.</p>
+          </div>
+
+          <form id="controls" class="controls">
+            <label>
+              Category
+              <select name="category">
+                <option value="any">Any</option>
+                <option value="daily-life">Daily life</option>
+                <option value="work-and-study">Work and study</option>
+                <option value="travel-and-places">Travel and places</option>
+                <option value="opinions-and-ideas">Opinions and ideas</option>
+                <option value="relationships">Relationships</option>
+                <option value="culture-and-media">Culture and media</option>
+                <option value="future-and-goals">Future and goals</option>
+                <option value="food-and-home">Food and home</option>
+              </select>
+            </label>
+
+            <label>
+              Energy
+              <select name="energy">
+                <option value="any">Any</option>
+                <option value="gentle">Gentle</option>
+                <option value="playful">Playful</option>
+                <option value="stretch">Stretch</option>
+              </select>
+            </label>
+
+            <div class="actions">
+              <button type="submit" class="primary">Generate theme</button>
+              <button type="button" id="copyPrompt" class="secondary">Copy for notes</button>
+            </div>
+          </form>
+        </section>
+
+        <section class="prompt-card" aria-live="polite">
+          <div class="prompt-topline">
+            <p id="promptBadge" class="badge">Loading...</p>
+            <p id="promptStatus" class="status">Fetching a starter topic</p>
+          </div>
+
+          <h2 id="promptTitle">Preparing your speaking prompt</h2>
+          <p id="promptScenario" class="scenario"></p>
+
+          <div class="prompt-section">
+            <h3>Warm-up</h3>
+            <p id="promptWarmup"></p>
+          </div>
+
+          <div class="prompt-section">
+            <h3>Keep it moving</h3>
+            <ul id="promptFollowups" class="chip-list"></ul>
+          </div>
+
+          <div class="prompt-section">
+            <h3>Useful words</h3>
+            <ul id="promptVocabulary" class="word-list"></ul>
+          </div>
+
+          <div class="prompt-section">
+            <h3>Final wrap-up</h3>
+            <p id="promptClosing"></p>
+          </div>
+        </section>
+      </main>
+    </div>
+  </body>
+</html>

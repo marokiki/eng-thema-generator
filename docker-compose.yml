@@ -1,0 +1,19 @@
+services:
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+    container_name: eng-theme-api
+    environment:
+      GEMINI_API_KEY: ${GEMINI_API_KEY}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.5-flash-lite}
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: eng-theme-web
+    depends_on:
+      - api
+    ports:
+      - "8080:80"
