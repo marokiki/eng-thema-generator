@@ -2,9 +2,13 @@ package main
 
 import (
 	"encoding/json"
+	"errors"
+	"io"
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"eng-theme-generator/api/internal/theme"
@@ -12,14 +16,22 @@ import (
 
 type server struct {
 	service *theme.Service
+	static  http.Handler
 }
 
 func main() {
-	srv := &server{service: theme.NewService()}
+	srv := &server{
+		service: theme.NewService(),
+		static:  newStaticHandler(env("WEB_DIST_DIR", "web/dist")),
+	}
 
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/health", srv.handleHealth)
 	mux.HandleFunc("/api/theme", srv.handleTheme)
+	mux.HandleFunc("/api/advice", srv.handleAdvice)
+	if srv.static != nil {
+		mux.Handle("/", srv.static)
+	}
 
 	addr := env("ADDR", ":8080")
 	log.Printf("listening on %s", addr)
@@ -57,6 +69,56 @@ func (s *server) handleTheme(w http.ResponseWriter, r *http.Request) {
 			"category": fallback(query.Get("category"), "any"),
 			"energy":   fallback(query.Get("energy"), "any"),
 		},
+	})
+}
+
+func (s *server) handleAdvice(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	defer r.Body.Close()
+
+	var request struct {
+		Text string `json:"text"`
+	}
+	if err := json.NewDecoder(io.LimitReader(r.Body, 32*1024)).Decode(&request); err != nil {
+		http.Error(w, "invalid JSON body", http.StatusBadRequest)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, map[string]any{
+		"advice": s.service.ReviewEnglish(r.Context(), request.Text),
+		"meta": map[string]int{
+			"characters": len([]rune(strings.TrimSpace(request.Text))),
+			"words":      len(strings.Fields(strings.TrimSpace(request.Text))),
+		},
+	})
+}
+
+func newStaticHandler(dir string) http.Handler {
+	indexPath := filepath.Join(dir, "index.html")
+	if _, err := os.Stat(indexPath); err != nil {
+		if !errors.Is(err, os.ErrNotExist) {
+			log.Printf("static assets unavailable: %v", err)
+		}
+		return nil
+	}
+
+	fileServer := http.FileServer(http.Dir(dir))
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		if r.URL.Path == "/" || !strings.Contains(filepath.Base(r.URL.Path), ".") {
+			http.ServeFile(w, r, indexPath)
+			return
+		}
+
+		fileServer.ServeHTTP(w, r)
 	})
 }
 

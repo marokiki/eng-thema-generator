@@ -70,37 +70,106 @@
               <button type="button" id="copyPrompt" class="secondary">Copy for notes</button>
             </div>
           </form>
+
+          <div class="coach-intro">
+            <h2>Speak, paste, refine</h2>
+            <p>
+              Dictate or paste your English, then get quick coaching on what already works,
+              what sounds unnatural, and how to say it a little better.
+            </p>
+          </div>
+
+          <form id="coachForm" class="coach-form">
+            <label class="coach-input-label" for="coachInput">
+              Your English draft
+            </label>
+            <textarea
+              id="coachInput"
+              name="text"
+              rows="8"
+              placeholder="I usually enjoy quiet cafes because I can relax and think about my plans."
+            ></textarea>
+
+            <div class="coach-toolbar">
+              <p id="coachCount" class="coach-count">0 words</p>
+              <button type="submit" class="primary">Get AI advice</button>
+            </div>
+          </form>
         </section>
 
-        <section class="prompt-card" aria-live="polite">
-          <div class="prompt-topline">
-            <p id="promptBadge" class="badge">Loading...</p>
-            <p id="promptStatus" class="status">Fetching a starter topic</p>
-          </div>
+        <div class="content-column">
+          <section class="prompt-card" aria-live="polite">
+            <div class="prompt-topline">
+              <p id="promptBadge" class="badge">Loading...</p>
+              <p id="promptStatus" class="status">Fetching a starter topic</p>
+            </div>
 
-          <h2 id="promptTitle">Preparing your speaking prompt</h2>
-          <p id="promptScenario" class="scenario"></p>
+            <h2 id="promptTitle">Preparing your speaking prompt</h2>
+            <p id="promptScenario" class="scenario"></p>
 
-          <div class="prompt-section">
-            <h3>Warm-up</h3>
-            <p id="promptWarmup"></p>
-          </div>
+            <div class="prompt-section">
+              <h3>Warm-up</h3>
+              <p id="promptWarmup"></p>
+            </div>
 
-          <div class="prompt-section">
-            <h3>Keep it moving</h3>
-            <ul id="promptFollowups" class="chip-list"></ul>
-          </div>
+            <div class="prompt-section">
+              <h3>Keep it moving</h3>
+              <ul id="promptFollowups" class="chip-list"></ul>
+            </div>
 
-          <div class="prompt-section">
-            <h3>Useful words</h3>
-            <ul id="promptVocabulary" class="word-list"></ul>
-          </div>
+            <div class="prompt-section">
+              <h3>Useful words</h3>
+              <ul id="promptVocabulary" class="word-list"></ul>
+            </div>
 
-          <div class="prompt-section">
-            <h3>Final wrap-up</h3>
-            <p id="promptClosing"></p>
-          </div>
-        </section>
+            <div class="prompt-section">
+              <h3>Final wrap-up</h3>
+              <p id="promptClosing"></p>
+            </div>
+          </section>
+
+          <section class="coach-card" aria-live="polite">
+            <div class="prompt-topline">
+              <p class="badge badge-soft">AI speaking notes</p>
+              <p id="coachStatus" class="status">Paste or dictate a short answer to get feedback</p>
+            </div>
+
+            <div class="coach-summary-block">
+              <h2>Quick read</h2>
+              <p id="coachSummary" class="scenario">
+                Your feedback will appear here with strengths, revisions, and one practice focus.
+              </p>
+            </div>
+
+            <div class="coach-grid">
+              <div class="prompt-section">
+                <h3>What already works</h3>
+                <ul id="coachStrengths" class="chip-list">
+                  <li>Clear ideas and complete sentences usually make the biggest difference.</li>
+                </ul>
+              </div>
+
+              <div class="prompt-section">
+                <h3>Try this next</h3>
+                <ul id="coachSuggestions" class="chip-list">
+                  <li>Add one real detail so your answer feels more vivid.</li>
+                </ul>
+              </div>
+            </div>
+
+            <div class="prompt-section">
+              <h3>More natural version</h3>
+              <p id="coachPolished" class="coach-polished">
+                I usually enjoy quiet cafes because they help me relax and think clearly.
+              </p>
+            </div>
+
+            <div class="prompt-section">
+              <h3>Practice focus</h3>
+              <p id="coachFocus"></p>
+            </div>
+          </section>
+        </div>
       </main>
     </div>
   </body>

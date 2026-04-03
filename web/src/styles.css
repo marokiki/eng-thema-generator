@@ -26,7 +26,8 @@ body {
 }
 
 button,
-select {
+select,
+textarea {
   font: inherit;
 }
 
@@ -127,22 +128,32 @@ select {
   gap: 24px;
 }
 
+.content-column {
+  display: grid;
+  gap: 24px;
+}
+
 .control-panel,
-.prompt-card {
+.prompt-card,
+.coach-card {
   border-radius: 28px;
   padding: 28px;
 }
 
 .panel-intro h2,
-.prompt-card h2 {
+.coach-intro h2,
+.prompt-card h2,
+.coach-card h2 {
   margin: 0;
   font-family: Georgia, serif;
   font-size: 2rem;
 }
 
 .panel-intro p,
+.coach-intro p,
 .scenario,
-.prompt-section p {
+.prompt-section p,
+.coach-count {
   color: var(--muted);
   line-height: 1.7;
 }
@@ -166,6 +177,55 @@ select {
   border: 1px solid var(--border);
   background: var(--paper-strong);
   color: var(--ink);
+}
+
+.coach-intro {
+  margin-top: 32px;
+}
+
+.coach-form {
+  display: grid;
+  gap: 14px;
+  margin-top: 18px;
+}
+
+.coach-input-label {
+  display: grid;
+  gap: 10px;
+  font-weight: 700;
+}
+
+#coachInput {
+  width: 100%;
+  min-height: 180px;
+  resize: vertical;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid var(--border);
+  background: var(--paper-strong);
+  color: var(--ink);
+  line-height: 1.7;
+}
+
+#coachInput:focus,
+.controls select:focus,
+.primary:focus,
+.secondary:focus {
+  outline: 2px solid rgba(216, 112, 76, 0.28);
+  outline-offset: 2px;
+}
+
+.coach-toolbar {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.coach-count {
+  margin: 0;
+  font-size: 0.95rem;
 }
 
 .actions {
@@ -204,7 +264,8 @@ select {
   overflow: hidden;
 }
 
-.prompt-card::before {
+.prompt-card::before,
+.coach-card::before {
   content: "";
   position: absolute;
   inset: 0 0 auto auto;
@@ -213,6 +274,11 @@ select {
   border-radius: 0 0 0 100%;
   background: linear-gradient(180deg, rgba(216, 112, 76, 0.18), transparent);
   pointer-events: none;
+}
+
+.coach-card {
+  position: relative;
+  overflow: hidden;
 }
 
 .prompt-topline {
@@ -233,6 +299,11 @@ select {
   font-weight: 700;
 }
 
+.badge-soft {
+  background: rgba(140, 170, 150, 0.16);
+  color: #456455;
+}
+
 .status {
   margin: 0;
   color: var(--muted);
@@ -246,6 +317,16 @@ select {
 
 .prompt-section {
   margin-top: 26px;
+}
+
+.coach-summary-block {
+  margin-top: 16px;
+}
+
+.coach-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 18px;
 }
 
 .prompt-section h3 {
@@ -278,6 +359,13 @@ select {
   background: rgba(140, 170, 150, 0.14);
 }
 
+.coach-polished {
+  padding: 16px 18px;
+  border-radius: 18px;
+  background: var(--paper-strong);
+  border: 1px solid var(--border);
+}
+
 @media (max-width: 920px) {
   .hero,
   .layout {
@@ -286,6 +374,10 @@ select {
 
   .hero-copy h1 {
     max-width: none;
+  }
+
+  .coach-grid {
+    grid-template-columns: 1fr;
   }
 }
 
@@ -298,7 +390,8 @@ select {
   .hero-copy,
   .hero-card,
   .control-panel,
-  .prompt-card {
+  .prompt-card,
+  .coach-card {
     border-radius: 22px;
     padding: 22px;
   }
@@ -307,7 +400,12 @@ select {
     align-items: flex-start;
   }
 
-  .actions > * {
+  .actions > *,
+  .coach-toolbar > *:last-child {
     flex: 1 1 100%;
+  }
+
+  .coach-toolbar {
+    align-items: stretch;
   }
 }

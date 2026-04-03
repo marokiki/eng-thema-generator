@@ -42,6 +42,39 @@ func TestGenerateUsesRequestContext(t *testing.T) {
 	}
 }
 
+func TestReviewEnglishFallsBackWithoutAPIKey(t *testing.T) {
+	service := NewService()
+	service.apiKey = ""
+
+	advice := service.ReviewEnglish(context.Background(), "i want improve my english because very important")
+
+	if advice.Summary == "" {
+		t.Fatal("expected summary to be set")
+	}
+	if len(advice.Strengths) != 2 {
+		t.Fatalf("expected 2 strengths, got %d", len(advice.Strengths))
+	}
+	if len(advice.Suggestions) != 3 {
+		t.Fatalf("expected 3 suggestions, got %d", len(advice.Suggestions))
+	}
+	if advice.Polished == "" {
+		t.Fatal("expected polished text to be set")
+	}
+}
+
+func TestReviewEnglishEmptyInputGetsStarterAdvice(t *testing.T) {
+	service := NewService()
+
+	advice := service.ReviewEnglish(context.Background(), "   ")
+
+	if advice.Polished == "" {
+		t.Fatal("expected polished example for empty input")
+	}
+	if advice.Focus == "" {
+		t.Fatal("expected focus message for empty input")
+	}
+}
+
 type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {

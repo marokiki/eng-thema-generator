@@ -45,18 +45,16 @@ The static files will be generated in `web/dist/`.
 
 ## Run
 
-Start the API with the project `.env` loaded:
+Start the app with the project `.env` loaded:
 
 ```bash
 set -a
 . ./.env
 set +a
-ADDR=127.0.0.1:18080 ./bin/theme-server
+ADDR=127.0.0.1:18080 WEB_DIST_DIR=web/dist ./bin/theme-server
 ```
 
-Run that command from the project root.
-
-Then serve `web/dist/` as static files and reverse proxy `/api/` to `127.0.0.1:18080`.
+Run that command from the project root. The Go server will expose both the API and the built frontend from `web/dist/`.
 
 ## systemd
 
@@ -66,3 +64,4 @@ An example unit file is included at `systemd/speak-api.service`.
 
 - `GET /api/health`
 - `GET /api/theme?category=any|daily-life|work-and-study|travel-and-places|opinions-and-ideas|relationships|culture-and-media|future-and-goals|food-and-home&energy=any|gentle|playful|stretch`
+- `POST /api/advice` with JSON body `{"text":"your English here"}`

@@ -26,6 +26,14 @@ type Prompt struct {
 	Closing    string   `json:"closing"`
 }
 
+type Advice struct {
+	Summary     string   `json:"summary"`
+	Strengths   []string `json:"strengths"`
+	Suggestions []string `json:"suggestions"`
+	Polished    string   `json:"polished"`
+	Focus       string   `json:"focus"`
+}
+
 type Theme struct {
 	Category   string
 	Energy     string
@@ -100,6 +108,25 @@ func (s *Service) Pick(ctx context.Context, category, energy, mode string, now t
 	}
 
 	return s.pickFallback(normalizedCategory, normalizedEnergy, normalizedMode, now)
+}
+
+func (s *Service) ReviewEnglish(ctx context.Context, text string) Advice {
+	normalized := normalizeEnglishSample(text)
+	if normalized == "" {
+		return Advice{
+			Summary:     "Add a short English answer first, then ask for advice.",
+			Strengths:   []string{"Voice input works best when you say one complete idea."},
+			Suggestions: []string{"Say at least one full sentence.", "Add one concrete detail or example.", "End with a period or another clear ending."},
+			Polished:    "I want to practice speaking English with one clear idea at a time.",
+			Focus:       "Start with one simple complete sentence.",
+		}
+	}
+
+	if advice, err := s.reviewWithAI(ctx, normalized); err == nil {
+		return advice
+	}
+
+	return fallbackAdvice(normalized)
 }
 
 func (s *Service) cached(key string) (Prompt, bool) {
@@ -181,6 +208,95 @@ func (s *Service) generate(ctx context.Context, now time.Time, category, energy,
 	}
 
 	return sanitizePrompt(prompt, category, energy), nil
+}
+
+func (s *Service) reviewWithAI(ctx context.Context, text string) (Advice, error) {
+	if s.apiKey == "" {
+		return Advice{}, fmt.Errorf("GEMINI_API_KEY is not set")
+	}
+
+	requestBody := geminiRequest{
+		SystemInstruction: geminiContent{
+			Parts: []geminiPart{{
+				Text: "You are a concise English speaking coach for a learner using voice input. Return raw JSON only. Do not wrap the JSON in markdown or code fences.",
+			}},
+		},
+		Contents: []geminiContent{{
+			Parts: []geminiPart{{
+				Text: fmt.Sprintf(`Review this learner's English and give practical speaking advice.
+
+Learner text:
+%s
+
+Return exactly this JSON shape:
+{
+  "summary": "one short overall comment",
+  "strengths": ["strength 1", "strength 2"],
+  "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"],
+  "polished": "a more natural version that keeps the learner's meaning and stays close to their level",
+  "focus": "one short practice focus"
+}
+
+Rules:
+- Write all values in English.
+- Be supportive but direct.
+- Focus on clarity, natural phrasing, grammar, and word choice.
+- Mention pronunciation only if the text strongly suggests a spoken issue, otherwise ignore it.
+- Keep the polished version close to the learner's original meaning.
+- Use exactly 2 strengths and exactly 3 suggestions.
+- Do not add extra keys.`, text),
+			}},
+		}},
+		GenerationConfig: geminiGenerationConfig{
+			Temperature:      0.5,
+			TopP:             0.9,
+			ResponseMimeType: "application/json",
+		},
+	}
+
+	body, err := json.Marshal(requestBody)
+	if err != nil {
+		return Advice{}, err
+	}
+
+	endpoint := fmt.Sprintf("%s/models/%s:generateContent?key=%s", s.baseURL, s.model, s.apiKey)
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return Advice{}, err
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := s.client.Do(req)
+	if err != nil {
+		return Advice{}, err
+	}
+	defer resp.Body.Close()
+
+	raw, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return Advice{}, err
+	}
+
+	if resp.StatusCode >= http.StatusBadRequest {
+		return Advice{}, fmt.Errorf("gemini request failed: %s", strings.TrimSpace(string(raw)))
+	}
+
+	var parsed geminiResponse
+	if err := json.Unmarshal(raw, &parsed); err != nil {
+		return Advice{}, err
+	}
+
+	textResponse := parsed.text()
+	if textResponse == "" {
+		return Advice{}, fmt.Errorf("gemini returned no text")
+	}
+
+	var advice Advice
+	if err := json.Unmarshal([]byte(cleanJSON(textResponse)), &advice); err != nil {
+		return Advice{}, err
+	}
+
+	return sanitizeAdvice(advice, text), nil
 }
 
 func (s *Service) promptInstruction(now time.Time, category, energy, mode string) string {
@@ -393,8 +509,32 @@ func sanitizePrompt(prompt Prompt, category, energy string) Prompt {
 	return prompt
 }
 
+func sanitizeAdvice(advice Advice, original string) Advice {
+	advice.Summary = strings.TrimSpace(advice.Summary)
+	advice.Polished = strings.TrimSpace(advice.Polished)
+	advice.Focus = strings.TrimSpace(advice.Focus)
+	advice.Strengths = normalizeList(advice.Strengths, 2)
+	advice.Suggestions = normalizeList(advice.Suggestions, 3)
+
+	if advice.Summary == "" {
+		advice.Summary = "Your idea is understandable and ready for one more revision."
+	}
+	if advice.Polished == "" {
+		advice.Polished = polishEnglish(original)
+	}
+	if advice.Focus == "" {
+		advice.Focus = "Make each sentence a little more specific."
+	}
+
+	return advice
+}
+
 func normalize(value string) string {
 	return strings.ToLower(strings.TrimSpace(value))
+}
+
+func normalizeEnglishSample(value string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(value)), " ")
 }
 
 func normalizeList(values []string, expected int) []string {
@@ -412,6 +552,83 @@ func normalizeList(values []string, expected int) []string {
 		out = out[:expected]
 	}
 	return out
+}
+
+func fallbackAdvice(text string) Advice {
+	polished := polishEnglish(text)
+	wordCount := len(strings.Fields(text))
+
+	summary := "Your message is understandable, and a few small edits would make it sound more natural."
+	if wordCount < 8 {
+		summary = "The idea is clear, but it is still very short, so adding detail will help a lot."
+	}
+
+	strengths := []string{
+		"You already have a clear main idea.",
+		"The sentence is simple enough to say aloud with confidence.",
+	}
+
+	suggestions := []string{
+		"Add one concrete detail so the listener can picture the situation.",
+		"Link your ideas with a smoother phrase such as because, so, or but.",
+		"Check the sentence ending so it sounds complete.",
+	}
+
+	lower := strings.ToLower(text)
+	if text == polished {
+		suggestions[2] = "Replace one basic word with a more natural choice if you can."
+	}
+	if !strings.ContainsAny(text, ".!?") {
+		suggestions[2] = "Add a clear ending, even if it is just a short final sentence."
+	}
+	if strings.Count(lower, " and ") >= 2 {
+		suggestions[1] = "Break the long chain of ideas into shorter sentences."
+	}
+	if strings.Contains(lower, "very ") {
+		suggestions[2] = "Use a more specific adjective instead of relying on very."
+	}
+
+	return Advice{
+		Summary:     summary,
+		Strengths:   strengths,
+		Suggestions: suggestions,
+		Polished:    polished,
+		Focus:       "Say the same idea again with one more detail and one smoother connector.",
+	}
+}
+
+func polishEnglish(text string) string {
+	text = normalizeEnglishSample(text)
+	if text == "" {
+		return ""
+	}
+
+	runes := []rune(text)
+	runes[0] = []rune(strings.ToUpper(string(runes[0])))[0]
+	text = string(runes)
+
+	if !strings.ContainsAny(text[len(text)-1:], ".!?") {
+		text += "."
+	}
+
+	replacements := []struct {
+		old string
+		new string
+	}{
+		{" i ", " I "},
+		{"dont", "don't"},
+		{"cant", "can't"},
+		{"wanna", "want to"},
+		{"gonna", "going to"},
+	}
+	for _, item := range replacements {
+		text = strings.ReplaceAll(text, item.old, item.new)
+	}
+	if strings.HasPrefix(strings.ToLower(text), "i ") {
+		text = "I " + text[2:]
+	}
+
+	return text
 }
 
 func sanitizeEnum(value string, allowed []string, requested, fallback string) string {
