@@ -22,6 +22,7 @@ type Advice = {
   summary: string;
   strengths: string[];
   suggestions: string[];
+  alternatives: string[];
   polished: string;
   focus: string;
 };
@@ -51,9 +52,17 @@ const coachStatus = required("#coachStatus");
 const coachSummary = required("#coachSummary");
 const coachStrengths = required("#coachStrengths");
 const coachSuggestions = required("#coachSuggestions");
+const coachAlternatives = required("#coachAlternatives");
 const coachPolished = required("#coachPolished");
 const coachFocus = required("#coachFocus");
 const coachCount = required("#coachCount");
+const timerDisplay = required("#timerDisplay");
+const timerToggle = document.querySelector<HTMLButtonElement>("#timerToggle");
+const timerReset = document.querySelector<HTMLButtonElement>("#timerReset");
+
+const timerDurationSeconds = 5 * 60;
+let remainingSeconds = timerDurationSeconds;
+let timerId: number | null = null;
 
 form?.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -67,6 +76,14 @@ coachForm?.addEventListener("submit", (event) => {
 
 coachInput.addEventListener("input", () => {
   renderCoachCount(coachInput.value);
+});
+
+timerToggle?.addEventListener("click", () => {
+  toggleTimer();
+});
+
+timerReset?.addEventListener("click", () => {
+  resetTimer();
 });
 
 copyButton?.addEventListener("click", async () => {
@@ -89,6 +106,7 @@ copyButton?.addEventListener("click", async () => {
 
 void loadPrompt();
 renderCoachCount(coachInput.value);
+renderTimer();
 
 async function loadPrompt(): Promise<void> {
   const formData = new FormData(form ?? undefined);
@@ -151,7 +169,8 @@ async function reviewEnglish(): Promise<void> {
       advice: {
         summary: "Add a short English answer first, then ask for advice.",
         strengths: ["Voice input works best when you say one complete idea."],
-        suggestions: ["Say at least one full sentence.", "Add one concrete detail or example.", "End with a clear final sentence."],
+        suggestions: ["Change a single word or phrase into one full sentence.", "Change a general idea into one real detail or example.", "Change the ending into a clear final sentence."],
+        alternatives: ["You could also say, 'I want to practice by speaking in short complete sentences.'", "Another option is, 'I want to say one clear idea and then improve it.'"],
         polished: "I want to practice speaking English with one clear idea at a time.",
         focus: "Start with one simple complete sentence.",
       },
@@ -182,6 +201,7 @@ async function reviewEnglish(): Promise<void> {
     coachSummary.textContent = error instanceof Error ? error.message : "Unknown error";
     coachStrengths.replaceChildren(createListItem("The checker is unavailable right now."));
     coachSuggestions.replaceChildren(createListItem("Try again after the API is available."));
+    coachAlternatives.replaceChildren(createListItem("Another phrasing option will appear here when the checker responds."));
     coachPolished.textContent = text;
     coachFocus.textContent = "Keep the sentence simple and try again.";
   }
@@ -194,6 +214,7 @@ function renderAdvice(data: AdviceResponse): void {
   coachSummary.textContent = advice.summary;
   coachStrengths.replaceChildren(...advice.strengths.map((item) => createListItem(item)));
   coachSuggestions.replaceChildren(...advice.suggestions.map((item) => createListItem(item)));
+  coachAlternatives.replaceChildren(...advice.alternatives.map((item) => createListItem(item)));
   coachPolished.textContent = advice.polished;
   coachFocus.textContent = advice.focus;
 }
@@ -201,6 +222,51 @@ function renderAdvice(data: AdviceResponse): void {
 function renderCoachCount(text: string): void {
   const words = text.trim() ? text.trim().split(/\s+/).length : 0;
   coachCount.textContent = `${words} ${words === 1 ? "word" : "words"}`;
+}
+
+function toggleTimer(): void {
+  if (timerId !== null) {
+    stopTimer();
+    return;
+  }
+
+  timerId = window.setInterval(() => {
+    remainingSeconds -= 1;
+    renderTimer();
+
+    if (remainingSeconds <= 0) {
+      stopTimer();
+      remainingSeconds = 0;
+      renderTimer();
+      coachStatus.textContent = "Five minutes are up";
+    }
+  }, 1000);
+
+  renderTimer();
+}
+
+function stopTimer(): void {
+  if (timerId !== null) {
+    window.clearInterval(timerId);
+    timerId = null;
+  }
+  renderTimer();
+}
+
+function resetTimer(): void {
+  stopTimer();
+  remainingSeconds = timerDurationSeconds;
+  renderTimer();
+}
+
+function renderTimer(): void {
+  const minutes = Math.floor(remainingSeconds / 60);
+  const seconds = remainingSeconds % 60;
+  timerDisplay.textContent = `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+
+  if (timerToggle) {
+    timerToggle.textContent = timerId === null ? "Start 5 min" : "Pause";
+  }
 }
 
 function humanize(value: string): string {

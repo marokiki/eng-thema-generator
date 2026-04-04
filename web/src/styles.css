@@ -197,9 +197,9 @@ textarea {
 
 #coachInput {
   width: 100%;
-  min-height: 180px;
+  min-height: 260px;
   resize: vertical;
-  padding: 16px 18px;
+  padding: 18px 20px;
   border-radius: 18px;
   border: 1px solid var(--border);
   background: var(--paper-strong);
@@ -220,6 +220,45 @@ textarea {
   justify-content: space-between;
   gap: 12px;
   align-items: center;
+  flex-wrap: wrap;
+}
+
+.timer-card {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  flex-wrap: wrap;
+  padding: 18px 20px;
+  border-radius: 20px;
+  background: rgba(216, 112, 76, 0.08);
+  border: 1px solid rgba(216, 112, 76, 0.18);
+}
+
+.timer-copy {
+  display: grid;
+  gap: 6px;
+}
+
+.timer-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.84rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.timer-display {
+  margin: 0;
+  font-family: Georgia, serif;
+  font-size: clamp(2rem, 4vw, 3rem);
+  line-height: 1;
+  color: var(--ink);
+}
+
+.timer-actions {
+  display: flex;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -401,7 +440,8 @@ textarea {
   }
 
   .actions > *,
-  .coach-toolbar > *:last-child {
+  .coach-toolbar > *:last-child,
+  .timer-actions > * {
     flex: 1 1 100%;
   }
 

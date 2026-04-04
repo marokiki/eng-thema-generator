@@ -86,9 +86,20 @@
             <textarea
               id="coachInput"
               name="text"
-              rows="8"
+              rows="10"
               placeholder="I usually enjoy quiet cafes because I can relax and think about my plans."
             ></textarea>
+
+            <div class="timer-card">
+              <div class="timer-copy">
+                <p class="timer-label">5-minute timer</p>
+                <p id="timerDisplay" class="timer-display">05:00</p>
+              </div>
+              <div class="timer-actions">
+                <button type="button" id="timerToggle" class="primary">Start 5 min</button>
+                <button type="button" id="timerReset" class="secondary">Reset</button>
+              </div>
+            </div>
 
             <div class="coach-toolbar">
               <p id="coachCount" class="coach-count">0 words</p>
@@ -155,6 +166,13 @@
                   <li>Add one real detail so your answer feels more vivid.</li>
                 </ul>
               </div>
+            </div>
+
+            <div class="prompt-section">
+              <h3>Other ways to say it</h3>
+              <ul id="coachAlternatives" class="chip-list">
+                <li>You could also rephrase the same idea with a different sentence pattern.</li>
+              </ul>
             </div>
 
             <div class="prompt-section">

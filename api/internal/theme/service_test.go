@@ -57,6 +57,9 @@ func TestReviewEnglishFallsBackWithoutAPIKey(t *testing.T) {
 	if len(advice.Suggestions) != 3 {
 		t.Fatalf("expected 3 suggestions, got %d", len(advice.Suggestions))
 	}
+	if len(advice.Alternatives) != 2 {
+		t.Fatalf("expected 2 alternatives, got %d", len(advice.Alternatives))
+	}
 	if advice.Polished == "" {
 		t.Fatal("expected polished text to be set")
 	}

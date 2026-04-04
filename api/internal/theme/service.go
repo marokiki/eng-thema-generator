@@ -27,11 +27,12 @@ type Prompt struct {
 }
 
 type Advice struct {
-	Summary     string   `json:"summary"`
-	Strengths   []string `json:"strengths"`
-	Suggestions []string `json:"suggestions"`
-	Polished    string   `json:"polished"`
-	Focus       string   `json:"focus"`
+	Summary      string   `json:"summary"`
+	Strengths    []string `json:"strengths"`
+	Suggestions  []string `json:"suggestions"`
+	Alternatives []string `json:"alternatives"`
+	Polished     string   `json:"polished"`
+	Focus        string   `json:"focus"`
 }
 
 type Theme struct {
@@ -114,11 +115,12 @@ func (s *Service) ReviewEnglish(ctx context.Context, text string) Advice {
 	normalized := normalizeEnglishSample(text)
 	if normalized == "" {
 		return Advice{
-			Summary:     "Add a short English answer first, then ask for advice.",
-			Strengths:   []string{"Voice input works best when you say one complete idea."},
-			Suggestions: []string{"Say at least one full sentence.", "Add one concrete detail or example.", "End with a period or another clear ending."},
-			Polished:    "I want to practice speaking English with one clear idea at a time.",
-			Focus:       "Start with one simple complete sentence.",
+			Summary:      "Add a short English answer first, then ask for advice.",
+			Strengths:    []string{"Voice input works best when you say one complete idea."},
+			Suggestions:  []string{"Change a single word or phrase into one full sentence.", "Change a general idea into one example or detail.", "Change a stopping point into a clear ending sentence."},
+			Alternatives: []string{"You could also say, 'I want to practice by speaking in short complete sentences.'", "Another option is, 'I want to say one clear idea and then improve it.'"},
+			Polished:     "I want to practice speaking English with one clear idea at a time.",
+			Focus:        "Start with one simple complete sentence.",
 		}
 	}
 
@@ -233,6 +235,7 @@ Return exactly this JSON shape:
   "summary": "one short overall comment",
   "strengths": ["strength 1", "strength 2"],
   "suggestions": ["suggestion 1", "suggestion 2", "suggestion 3"],
+  "alternatives": ["alternative 1", "alternative 2"],
   "polished": "a more natural version that keeps the learner's meaning and stays close to their level",
   "focus": "one short practice focus"
 }
@@ -241,9 +244,11 @@ Rules:
 - Write all values in English.
 - Be supportive but direct.
 - Focus on clarity, natural phrasing, grammar, and word choice.
+- Make each suggestion concrete. Prefer wording like 'Change X to Y' or 'Instead of X, say Y.'
 - Mention pronunciation only if the text strongly suggests a spoken issue, otherwise ignore it.
 - Keep the polished version close to the learner's original meaning.
 - Use exactly 2 strengths and exactly 3 suggestions.
+- Use exactly 2 alternative phrasings that could also work for the learner's meaning.
 - Do not add extra keys.`, text),
 			}},
 		}},
@@ -510,20 +515,23 @@ func sanitizePrompt(prompt Prompt, category, energy string) Prompt {
 }
 
 func sanitizeAdvice(advice Advice, original string) Advice {
+	fallback := fallbackAdvice(original)
+
 	advice.Summary = strings.TrimSpace(advice.Summary)
 	advice.Polished = strings.TrimSpace(advice.Polished)
 	advice.Focus = strings.TrimSpace(advice.Focus)
-	advice.Strengths = normalizeList(advice.Strengths, 2)
-	advice.Suggestions = normalizeList(advice.Suggestions, 3)
+	advice.Strengths = normalizeAdviceList(advice.Strengths, fallback.Strengths)
+	advice.Suggestions = normalizeAdviceList(advice.Suggestions, fallback.Suggestions)
+	advice.Alternatives = normalizeAdviceList(advice.Alternatives, fallback.Alternatives)
 
 	if advice.Summary == "" {
-		advice.Summary = "Your idea is understandable and ready for one more revision."
+		advice.Summary = fallback.Summary
 	}
 	if advice.Polished == "" {
-		advice.Polished = polishEnglish(original)
+		advice.Polished = fallback.Polished
 	}
 	if advice.Focus == "" {
-		advice.Focus = "Make each sentence a little more specific."
+		advice.Focus = fallback.Focus
 	}
 
 	return advice
@@ -554,6 +562,26 @@ func normalizeList(values []string, expected int) []string {
 	return out
 }
 
+func normalizeAdviceList(values, fallback []string) []string {
+	out := make([]string, 0, len(fallback))
+	for _, value := range values {
+		value = strings.TrimSpace(value)
+		if value != "" {
+			out = append(out, value)
+		}
+	}
+
+	for i := len(out); i < len(fallback); i++ {
+		out = append(out, fallback[i])
+	}
+
+	if len(out) > len(fallback) {
+		out = out[:len(fallback)]
+	}
+
+	return out
+}
+
 func fallbackAdvice(text string) Advice {
 	polished := polishEnglish(text)
 	wordCount := len(strings.Fields(text))
@@ -569,32 +597,50 @@ func fallbackAdvice(text string) Advice {
 	}
 
 	suggestions := []string{
-		"Add one concrete detail so the listener can picture the situation.",
-		"Link your ideas with a smoother phrase such as because, so, or but.",
-		"Check the sentence ending so it sounds complete.",
+		"Change one general phrase into a concrete detail so the listener can picture it.",
+		"Change a rough connection into a smoother one with because, so, or but.",
+		"Change the ending into a complete final sentence.",
 	}
 
 	lower := strings.ToLower(text)
 	if text == polished {
-		suggestions[2] = "Replace one basic word with a more natural choice if you can."
+		suggestions[2] = "Change one basic word into a more natural choice if you can."
 	}
 	if !strings.ContainsAny(text, ".!?") {
-		suggestions[2] = "Add a clear ending, even if it is just a short final sentence."
+		suggestions[2] = "Change the stop into a full ending sentence, even if it stays short."
 	}
 	if strings.Count(lower, " and ") >= 2 {
-		suggestions[1] = "Break the long chain of ideas into shorter sentences."
+		suggestions[1] = "Change the long chain with 'and' into two shorter sentences."
 	}
 	if strings.Contains(lower, "very ") {
-		suggestions[2] = "Use a more specific adjective instead of relying on very."
+		suggestions[2] = "Change 'very + adjective' into one stronger adjective."
 	}
 
 	return Advice{
-		Summary:     summary,
-		Strengths:   strengths,
-		Suggestions: suggestions,
-		Polished:    polished,
-		Focus:       "Say the same idea again with one more detail and one smoother connector.",
+		Summary:      summary,
+		Strengths:    strengths,
+		Suggestions:  suggestions,
+		Alternatives: buildAlternativePhrasings(text, polished),
+		Polished:     polished,
+		Focus:        "Say the same idea again with one more detail and one smoother connector.",
 	}
+}
+
+func buildAlternativePhrasings(original, polished string) []string {
+	alternatives := []string{
+		fmt.Sprintf("You could also say, %q", polished),
+		"Another option is to split the idea into two shorter sentences and keep the same meaning.",
+	}
+
+	lower := strings.ToLower(original)
+	if strings.Contains(lower, "because") {
+		alternatives[1] = "Another option is to start with the reason first, then give the main point."
+	}
+	if strings.Count(lower, " and ") >= 2 {
+		alternatives[1] = "Another option is to break the long sentence into two shorter lines."
+	}
+
+	return alternatives
 }
 
 func polishEnglish(text string) string {
