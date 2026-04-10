@@ -78,6 +78,24 @@ func TestReviewEnglishEmptyInputGetsStarterAdvice(t *testing.T) {
 	}
 }
 
+func TestRememberKeepsMostRecentPromptsBounded(t *testing.T) {
+	service := NewService()
+
+	for i := 0; i < recentPromptLimit+3; i++ {
+		service.remember(Prompt{
+			Category: "relationships",
+			Energy:   "playful",
+			Title:    "Prompt",
+			Warmup:   "Question",
+		})
+	}
+
+	recent := service.recentPrompts()
+	if len(recent) != recentPromptLimit {
+		t.Fatalf("expected %d recent prompts, got %d", recentPromptLimit, len(recent))
+	}
+}
+
 type roundTripFunc func(req *http.Request) (*http.Response, error)
 
 func (fn roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {

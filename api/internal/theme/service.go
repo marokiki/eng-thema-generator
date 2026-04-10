@@ -53,8 +53,9 @@ type Service struct {
 	client   *http.Client
 	fallback []Theme
 
-	mu    sync.RWMutex
-	cache map[string]Prompt
+	mu          sync.RWMutex
+	cache       map[string]Prompt
+	recentCache []promptMemory
 }
 
 type categoryTemplate struct {
@@ -66,6 +67,15 @@ type categoryTemplate struct {
 	closing    string
 }
 
+type promptMemory struct {
+	Category string
+	Energy   string
+	Title    string
+	Warmup   string
+}
+
+const recentPromptLimit = 8
+
 func NewService() *Service {
 	apiKey := strings.TrimSpace(os.Getenv("GEMINI_API_KEY"))
 	model := strings.TrimSpace(os.Getenv("GEMINI_MODEL"))
@@ -74,12 +84,13 @@ func NewService() *Service {
 	}
 
 	return &Service{
-		apiKey:   apiKey,
-		model:    model,
-		baseURL:  "https://generativelanguage.googleapis.com/v1beta",
-		client:   &http.Client{Timeout: 15 * time.Second},
-		fallback: fallbackThemes(),
-		cache:    make(map[string]Prompt),
+		apiKey:      apiKey,
+		model:       model,
+		baseURL:     "https://generativelanguage.googleapis.com/v1beta",
+		client:      &http.Client{Timeout: 15 * time.Second},
+		fallback:    fallbackThemes(),
+		cache:       make(map[string]Prompt),
+		recentCache: make([]promptMemory, 0, recentPromptLimit),
 	}
 }
 
@@ -100,15 +111,19 @@ func (s *Service) Pick(ctx context.Context, category, energy, mode string, now t
 		generated, err := s.generate(ctx, now, normalizedCategory, normalizedEnergy, normalizedMode)
 		if err == nil {
 			s.store(cacheKey, generated)
+			s.remember(generated)
 			return generated
 		}
 	}
 
 	if generated, err := s.generate(ctx, now, normalizedCategory, normalizedEnergy, normalizedMode); err == nil {
+		s.remember(generated)
 		return generated
 	}
 
-	return s.pickFallback(normalizedCategory, normalizedEnergy, normalizedMode, now)
+	fallback := s.pickFallback(normalizedCategory, normalizedEnergy, normalizedMode, now)
+	s.remember(fallback)
+	return fallback
 }
 
 func (s *Service) ReviewEnglish(ctx context.Context, text string) Advice {
@@ -142,6 +157,32 @@ func (s *Service) store(key string, prompt Prompt) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.cache[key] = prompt
+}
+
+func (s *Service) remember(prompt Prompt) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	entry := promptMemory{
+		Category: prompt.Category,
+		Energy:   prompt.Energy,
+		Title:    strings.TrimSpace(prompt.Title),
+		Warmup:   strings.TrimSpace(prompt.Warmup),
+	}
+
+	s.recentCache = append([]promptMemory{entry}, s.recentCache...)
+	if len(s.recentCache) > recentPromptLimit {
+		s.recentCache = s.recentCache[:recentPromptLimit]
+	}
+}
+
+func (s *Service) recentPrompts() []promptMemory {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	copied := make([]promptMemory, len(s.recentCache))
+	copy(copied, s.recentCache)
+	return copied
 }
 
 func (s *Service) generate(ctx context.Context, now time.Time, category, energy, mode string) (Prompt, error) {
@@ -305,6 +346,16 @@ Rules:
 }
 
 func (s *Service) promptInstruction(now time.Time, category, energy, mode string) string {
+	recent := s.recentPrompts()
+	recentSection := "No recent prompts are available yet."
+	if len(recent) > 0 {
+		lines := make([]string, 0, len(recent))
+		for _, item := range recent {
+			lines = append(lines, fmt.Sprintf("- [%s / %s] %s :: %s", item.Category, item.Energy, item.Title, item.Warmup))
+		}
+		recentSection = strings.Join(lines, "\n")
+	}
+
 	return fmt.Sprintf(`Generate one English speaking prompt for a learner practicing free talk for about five minutes.
 
 Constraints:
@@ -313,6 +364,10 @@ Constraints:
 - Keep the English level around CEFR A2-B2.
 - Make it sound fresh and specific, not generic textbook conversation.
 - The learner is speaking alone or with a tutor, so the prompt should work without special background knowledge.
+- The learner is an IT engineer. They can handle technically informed but conversational topics about software, systems, debugging, developer habits, web products, automation, open source, and building things.
+- The learner's hobbies and interests include fishing, anime, Japanese professional baseball, and their portfolio site at https://marokiki.net. It is good to sometimes use these as anchors, but do not use them every time.
+- Spread the topics widely across daily life, engineering work, hobbies, opinions, media, sports, creativity, habits, future plans, and personal preferences.
+- Actively avoid repeating the same angle, framing, or question pattern from recent prompts.
 - Follow the requested category and energy if provided.
 - For mode "daily", make the result feel like a polished prompt of the day, not a random list item.
 - Today is %s.
@@ -320,6 +375,16 @@ Constraints:
 Requested category: %s
 Requested energy: %s
 Requested mode: %s
+
+Recent prompts to avoid echoing too closely:
+%s
+
+Topic diversity guidance:
+- Prefer concrete angles over broad themes like "What do you like?".
+- Sometimes ask for stories, sometimes comparisons, sometimes preferences, sometimes decisions, sometimes small technical explanations, and sometimes future ideas.
+- When using engineering topics, keep them conversational rather than interview-style.
+- When using hobbies, vary between practical experiences, opinions, memories, routines, and what-if questions.
+- Do not produce another prompt that could be answered with almost the same content as one of the recent prompts above.
 
 Return exactly this JSON shape:
 {
@@ -337,7 +402,7 @@ Rules for the JSON:
 - Use exactly 3 follow-up questions.
 - Use exactly 4 vocabulary items.
 - Keep all values in English.
-- Do not add extra keys.`, now.Format("2006-01-02"), displayConstraint(category), displayConstraint(energy), displayConstraint(mode))
+- Do not add extra keys.`, now.Format("2006-01-02"), displayConstraint(category), displayConstraint(energy), displayConstraint(mode), recentSection)
 }
 
 func (s *Service) pickFallback(category, energy, mode string, now time.Time) Prompt {
